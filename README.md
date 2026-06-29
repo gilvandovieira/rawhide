@@ -99,7 +99,7 @@ another origin can drive the full flow.
 ## Personas & knobs
 
 A **persona** is a scenario, not just a user (a valid user, an admin, an about-to-expire token,
-a denied-consent flow…). Ten presets seed the store on first boot; create your own in the console
+a denied-consent flow…). Twenty-two presets seed the store on first boot (6 happy / 10 edge / 6 error); create your own in the console
 (raw-JSON claims, must include `sub`). Presets are read-only; custom personas are editable/deletable
 and persist to the store file.
 
@@ -167,7 +167,7 @@ default.
 │   ├── keys.ts            #   RS256 keypair + JWKS + JWT signing (Web Crypto), rotatable
 │   ├── store.ts           #   createStore: seeded persona store + knobs (JSON file | memory)
 │   ├── knobs.ts           #   Knobs defaults + FormData parsing
-│   ├── presets.ts         #   the ten seed personas
+│   ├── presets.ts         #   the seed personas (6 happy / 10 edge / 6 error)
 │   ├── types.ts           #   Persona, Knobs, Mode + scenario/chips helpers
 │   └── theme.ts           #   leather/gold tokens (light + dark) → CSS variables
 ├── components/            # Fresh/Preact SSR screens (zero islands)

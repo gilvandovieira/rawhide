@@ -1,6 +1,7 @@
 /** @jsxImportSource preact */
 import type { ComponentChildren } from "preact";
 import type { Knobs, Mode, Persona } from "../core/types.ts";
+import { scenarioOf } from "../core/types.ts";
 import { cssVars, THEMES } from "../core/theme.ts";
 import { ThemeToggle } from "./ThemeToggle.tsx";
 
@@ -22,10 +23,7 @@ export function Console({ personas, knobs, tenant, issuer = "localhost:9000", st
   const storeLabel = store ?? `.oidc-personas${tenant ? "." + tenant : ""}.json`;
   const dotFor = (p: Persona) => {
     if (p.source === "custom") return "var(--gold)";
-    if (p.authorizeError || (p.idTokenTTL ?? 0) < 0) return "var(--error)";
-    const roles = (p.claims?.roles as string[] | undefined) ?? [];
-    if (p.id === "valid" || p.id === "admin" || roles.includes("admin")) return "var(--happy)";
-    return "var(--edge)";
+    return { happy: "var(--happy)", edge: "var(--edge)", error: "var(--error)" }[scenarioOf(p)];
   };
 
   return (

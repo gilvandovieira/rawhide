@@ -273,3 +273,36 @@ Deno.test("unsupported grant_type → 400", async () => {
   assertEquals(status, 400);
   assertEquals((body as TokenBody).error, "unsupported_grant_type");
 });
+
+// Drives EVERY seeded persona through its scenario, so "test out each scenario" is enforced:
+// error personas must redirect with their error; all others must mint a JWKS-verifiable token.
+Deno.test("every preset completes its scenario end-to-end", async (t) => {
+  const { provider } = await mkProvider({ tenant_id: "acme" });
+  for (const p of presets) {
+    await t.step(p.id, async () => {
+      const loc = codeFrom(provider, p.id);
+
+      if (p.authorizeError) {
+        assertEquals(loc.searchParams.get("error"), p.authorizeError.error);
+        assertFalse(loc.searchParams.has("code"), `${p.id} must not issue a code`);
+        return;
+      }
+
+      const code = loc.searchParams.get("code");
+      assertExists(code, `${p.id} should issue a code`);
+      const { status, body } = await provider.token(exchangeForm(code));
+      assertEquals(status, 200, `${p.id} token exchange`);
+      const tok = body as TokenBody;
+      assertExists(tok.id_token);
+      assert(await verifyToken(tok.id_token!, provider.jwks()), `${p.id} id_token must verify against jwks`);
+
+      const claims = claimsOf(tok.id_token!);
+      assertEquals(claims.iss, ISSUER);
+      assertEquals(claims.aud, "demo");
+      assertEquals(claims.sub, p.claims.sub, `${p.id} sub`);
+      if (p.id === "expired") {
+        assert((claims.exp as number) < Math.floor(Date.now() / 1000), "expired persona's exp is in the past");
+      }
+    });
+  }
+});
