@@ -1,0 +1,13 @@
+# Persona/knob store files (per-tenant variants too) — local, hand-inspectable state
+.oidc-personas*.json
+
+# Fresh build output (only created if you ever run a build)
+_fresh/
+vite.config.ts.timestamp-*
+
+# Deno
+.deno/
+
+# OS / editor
+.DS_Store
+*.swp

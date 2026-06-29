@@ -1,0 +1,29 @@
+{
+  "name": "@gilvandovieira/rawhideidentity",
+  "version": "0.1.0",
+  "license": "MIT",
+  "exports": {
+    ".": "./main.tsx",
+    "./core": "./core/oidc.ts"
+  },
+  "tasks": {
+    "dev": "deno run -A --watch main.tsx",
+    "start": "deno run -A main.tsx",
+    "check": "deno check main.tsx"
+  },
+  "imports": {
+    "fresh": "jsr:@fresh/core@^2.3.0",
+    "preact": "npm:preact@^10",
+    "@preact/signals": "npm:@preact/signals@^2",
+    "@std/cli": "jsr:@std/cli@^1"
+  },
+  "compilerOptions": {
+    "jsx": "precompile",
+    "jsxImportSource": "preact"
+  },
+  "fmt": {
+    "lineWidth": 120,
+    "exclude": ["*.md", "components/", "static/", ".oidc-personas*.json", "_fresh"]
+  },
+  "exclude": ["_fresh", ".oidc-personas*.json"]
+}
