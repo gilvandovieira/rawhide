@@ -12,6 +12,13 @@
  * Zero dependencies — vanilla custom element + Shadow DOM + Web Crypto.
  */
 
+import {
+  decodeJwt,
+  pkceChallenge,
+  randomVerifier,
+  verifyRs256,
+} from "./crypto.ts";
+
 type Stage = "discovery" | "authorize" | "token" | "validate" | "userinfo";
 type Flow = "popup" | "redirect";
 
@@ -46,26 +53,6 @@ interface StagedError extends Error {
 }
 
 const SESSION_KEY = "rawhide:flow";
-
-// --- base64url helpers -------------------------------------------------------
-const bytesToB64url = (b: ArrayBuffer | Uint8Array): string => {
-  const bytes = b instanceof Uint8Array ? b : new Uint8Array(b);
-  let s = "";
-  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
-  return btoa(s).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
-};
-
-const b64urlToBytes = (s: string): Uint8Array<ArrayBuffer> => {
-  const pad = s.replaceAll("-", "+").replaceAll("_", "/") +
-    "===".slice((s.length + 3) % 4);
-  const bin = atob(pad);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-};
-
-const decodeSegment = (seg: string): Record<string, unknown> =>
-  JSON.parse(new TextDecoder().decode(b64urlToBytes(seg)));
 
 const staged = (stage: Stage, e: unknown): StagedError => {
   const err = (e instanceof Error ? e : new Error(String(e))) as StagedError;
@@ -124,6 +111,9 @@ export class RawhideHarness extends HTMLElement {
   #busy = false;
   #personas: PersonaSummary[] = [];
   #onMessage?: (ev: MessageEvent) => void;
+  // Set when resuming a redirect flow, so the aud check uses the client_id we authorized with
+  // even if the host page's `client-id` attribute changed across the round-trip.
+  #clientIdOverride: string | null = null;
 
   connectedCallback(): void {
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
@@ -157,7 +147,8 @@ export class RawhideHarness extends HTMLElement {
     return this.getAttribute("flow") === "redirect" ? "redirect" : "popup";
   }
   get #clientId(): string {
-    return this.getAttribute("client-id") ?? "rawhide-harness";
+    return this.#clientIdOverride ?? this.getAttribute("client-id") ??
+      "rawhide-harness";
   }
   get #scope(): string {
     return this.getAttribute("scope") ?? "openid profile email";
@@ -198,21 +189,15 @@ export class RawhideHarness extends HTMLElement {
       return;
     }
     this.#busy = true;
+    this.#clientIdOverride = null; // a fresh run uses the live attribute
     this.#renderStatus("run", "running…");
     try {
       const meta = await this.#discovery();
 
       this.#state = crypto.randomUUID();
       this.#nonce = crypto.randomUUID();
-      this.#verifier = bytesToB64url(
-        crypto.getRandomValues(new Uint8Array(32)),
-      );
-      const challenge = bytesToB64url(
-        await crypto.subtle.digest(
-          "SHA-256",
-          new TextEncoder().encode(this.#verifier),
-        ),
-      );
+      this.#verifier = randomVerifier();
+      const challenge = await pkceChallenge(this.#verifier);
       const redirectUri = this.#redirectUri;
 
       const url = new URL(meta.authorization_endpoint);
@@ -229,7 +214,7 @@ export class RawhideHarness extends HTMLElement {
         ...(persona ? { persona } : {}),
       }).toString();
 
-      const { code } = await this.#authorize(url.toString(), redirectUri); // redirect flow never resolves
+      const { code } = await this.#authorize(url.toString(), redirectUri, meta); // redirect flow never resolves
       await this.#finish(meta, code, redirectUri);
     } catch (e) {
       this.#fail(e as StagedError);
@@ -249,9 +234,15 @@ export class RawhideHarness extends HTMLElement {
     }
   }
 
-  #authorize(url: string, redirectUri: string): Promise<{ code: string }> {
+  #authorize(
+    url: string,
+    redirectUri: string,
+    meta: Discovery,
+  ): Promise<{ code: string }> {
     if (this.#flow === "redirect") {
       try {
+        // Store everything needed to finish against the SAME issuer after the page reloads —
+        // the redirect can land with different element attributes (e.g. server/client-id).
         sessionStorage.setItem(
           SESSION_KEY,
           JSON.stringify({
@@ -259,6 +250,8 @@ export class RawhideHarness extends HTMLElement {
             nonce: this.#nonce,
             verifier: this.#verifier,
             redirectUri,
+            clientId: this.#clientId,
+            meta,
           }),
         );
       } catch { /* ignore */ }
@@ -337,10 +330,20 @@ export class RawhideHarness extends HTMLElement {
       sessionStorage.removeItem(SESSION_KEY);
     } catch { /* ignore */ }
 
-    const { state, nonce, verifier, redirectUri } = JSON.parse(stored);
+    const { state, nonce, verifier, redirectUri, clientId, meta } = JSON.parse(
+      stored,
+    ) as {
+      state: string;
+      nonce: string;
+      verifier: string;
+      redirectUri: string;
+      clientId: string;
+      meta: Discovery;
+    };
     this.#state = state;
     this.#nonce = nonce;
     this.#verifier = verifier;
+    this.#clientIdOverride = clientId ?? null;
     history.replaceState(null, "", location.origin + location.pathname); // scrub ?code from the URL
 
     this.#busy = true;
@@ -355,7 +358,7 @@ export class RawhideHarness extends HTMLElement {
       if (params.get("state") !== state) {
         throw staged("authorize", new Error("state mismatch"));
       }
-      const meta = await this.#discovery();
+      // Finish against the issuer we started with (stored meta), not the current attribute.
       await this.#finish(meta, code ?? "", redirectUri);
     } catch (e) {
       this.#fail(e as StagedError);
@@ -430,10 +433,7 @@ export class RawhideHarness extends HTMLElement {
   ): Promise<{ claims: Claims; valid: boolean; issues: string[] }> {
     let header: Record<string, unknown>, claims: Claims;
     try {
-      const parts = idToken.split(".");
-      if (parts.length !== 3) throw new Error("id_token is not a JWT");
-      header = decodeSegment(parts[0]);
-      claims = decodeSegment(parts[1]);
+      ({ header, payload: claims } = decodeJwt(idToken));
     } catch (e) {
       throw staged("validate", e);
     }
@@ -448,24 +448,8 @@ export class RawhideHarness extends HTMLElement {
       ) ?? jwks.keys[0];
       if (!jwk) {
         issues.push("no JWK to verify against");
-      } else {
-        const key = await crypto.subtle.importKey(
-          "jwk",
-          jwk,
-          { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-          false,
-          ["verify"],
-        );
-        const [h, p, s] = idToken.split(".");
-        const ok = await crypto.subtle.verify(
-          "RSASSA-PKCS1-v1_5",
-          key,
-          b64urlToBytes(s),
-          new TextEncoder().encode(`${h}.${p}`),
-        );
-        if (!ok) {
-          issues.push("RS256 signature did not verify");
-        }
+      } else if (!(await verifyRs256(idToken, jwk))) {
+        issues.push("RS256 signature did not verify");
       }
     } catch (e) {
       issues.push(

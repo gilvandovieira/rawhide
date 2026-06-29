@@ -5,11 +5,15 @@
   "exports": "./rawhide-harness.ts",
   "tasks": {
     "check": "deno check rawhide-harness.ts",
+    "test": "deno test",
     "bundle": "deno bundle --platform browser rawhide-harness.ts -o dist/rawhide-harness.js",
     "demo": "deno run -R -N --allow-env=PORT dev-serve.ts"
   },
   "compilerOptions": {
     "lib": ["dom", "dom.iterable", "dom.asynciterable", "esnext"]
+  },
+  "imports": {
+    "@std/assert": "jsr:@std/assert@^1"
   },
   "fmt": { "exclude": ["dist/", "*.html"] },
   "lint": { "exclude": ["dist/"] }
