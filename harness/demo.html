@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rawhide Harness — demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Bitter:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    body { margin: 0; background: #140E08; color: #F0E7D4; font-family: 'IBM Plex Sans', system-ui, sans-serif; min-height: 100vh; padding: 48px 24px; }
+    .wrap { max-width: 680px; margin: 0 auto; }
+    h1 { font: 700 26px Bitter, serif; color: #E8C679; margin: 0 0 6px; }
+    p { color: #B6A88E; font-size: 14px; line-height: 1.6; }
+    code { font-family: 'IBM Plex Mono'; color: #E8C679; }
+    pre { background: #1C140D; border: 1px solid #34281B; border-radius: 10px; padding: 12px; color: #B6A88E; font: 11px/1.5 'IBM Plex Mono'; overflow: auto; margin-top: 18px; min-height: 40px; }
+    rawhide-harness { display: block; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Rawhide Harness — demo</h1>
+    <p>
+      Relying-party tester. Start the provider first (<code>deno task start</code> on <code>:9000</code>).
+      Configure via query params, e.g. <code>?server=localhost:9000&amp;flow=popup&amp;persona=valid</code>.
+    </p>
+    <rawhide-harness id="h"></rawhide-harness>
+    <pre id="log">events will appear here…</pre>
+  </div>
+
+  <script type="module" src="./dist/rawhide-harness.js"></script>
+  <script>
+    const q = new URLSearchParams(location.search);
+    const h = document.getElementById("h");
+    h.setAttribute("server", q.get("server") || "localhost:9000");
+    h.setAttribute("flow", q.get("flow") || "popup");
+    if (q.get("persona")) h.setAttribute("persona", q.get("persona"));
+    if (q.has("auto")) h.setAttribute("auto", "");
+    if (q.has("headless")) h.setAttribute("headless", "");
+
+    const log = document.getElementById("log");
+    addEventListener("rawhide:tokens", (e) => {
+      log.textContent = "rawhide:tokens\n" +
+        JSON.stringify({ valid: e.detail.valid, claims: e.detail.claims, userinfo: e.detail.userinfo }, null, 2);
+    });
+    addEventListener("rawhide:error", (e) => {
+      log.textContent = "rawhide:error → stage=" + e.detail.stage + "\n" + e.detail.message;
+    });
+  </script>
+</body>
+</html>

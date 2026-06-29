@@ -52,6 +52,8 @@ Environment: `ISSUER=<url>` (same as `--issuer`), `CONSOLE=off` (disable `/conso
 | GET | `/authorize` | Persona picker → issues an auth code (or `&persona=<id>` to skip the picker) |
 | POST | `/token` | `authorization_code` (PKCE) and `refresh_token` grants |
 | GET | `/userinfo` | Claims for a Bearer access token |
+| GET | `/personas` | Machine-readable persona list `[{id,label,description,scenario}]` (for the harness) |
+| GET | `/relay` | postMessage relay page for the harness popup flow |
 | GET | `/theme?set=light\|dark&to=<path>` | Sets the UI theme cookie, redirects back |
 | GET/POST | `/console`, `/console/*` | Control console (gated off with `CONSOLE=off`) |
 
@@ -99,16 +101,42 @@ default.
 │   ├── Picker.tsx         #   persona picker (RP lands here)
 │   ├── Console.tsx        #   control console (plain forms)
 │   └── ThemeToggle.tsx    #   light/dark switch (cookie-based, zero-JS)
-└── static/brand/          # hat logo + favicon/app-icon set (served at /brand/*)
+├── static/brand/          # hat logo + favicon/app-icon set (served at /brand/*)
+└── harness/               # @gilvandovieira/rawhideharness — RP-side Web Component (own deno.json)
+    ├── rawhide-harness.ts #   the custom element (vanilla, Shadow DOM, Web Crypto, zero deps)
+    ├── demo.html          #   local demo page (reads server/persona/flow from the query)
+    └── dev-serve.ts       #   tiny static server for the demo (separate origin → exercises CORS)
 ```
 
 `deno.json` exposes two entry points: `.` runs the provider; `./core` exports the
 framework-agnostic primitives (`createProvider`, `createStore`, the OIDC functions and types) for
 embedding the issuer in your own process.
 
-## Specs & roadmap
+## Harness (RP-side tester)
+
+`@gilvandovieira/rawhideharness` is a drop-in Web Component that drives this provider through a
+real Authorization Code + PKCE flow, verifies the tokens (RS256 against JWKS + iss/aud/exp/nonce),
+and renders an inspector — so you can test your relying-party integration without writing client
+code. It lives in [`harness/`](./harness/) (its own JSR package, zero dependencies).
+
+```html
+<rawhide-harness server="localhost:9000"></rawhide-harness>
+<script type="module" src="https://esm.sh/jsr/@gilvandovieira/rawhideharness"></script>
+```
+
+It emits `rawhide:tokens` (`{ idToken, accessToken, refreshToken?, claims, userinfo?, valid }`)
+and `rawhide:error` (`{ stage, message }`) as bubbling/composed DOM events; `flow="popup"` (default)
+or `flow="redirect"`; `headless` for events-only. See [`harness/rawhide-harness.ts`](./harness/rawhide-harness.ts).
+
+Try it locally against a running provider:
+
+```bash
+deno task start                          # provider on :9000 (terminal 1)
+cd harness && deno task bundle && deno task demo   # demo on :8080 (terminal 2)
+# open http://localhost:8080/demo.html
+```
+
+## Specs
 
 - [`rawhideidentity.spec.md`](./rawhideidentity.spec.md) — the provider design (this package).
-- [`rawhide-harness.spec.md`](./rawhide-harness.spec.md) — `@gilvandovieira/rawhideharness`, a
-  drop-in `<rawhide-harness>` Web Component that drives this provider and inspects the tokens.
-  **Planned — not yet implemented.**
+- [`rawhide-harness.spec.md`](./rawhide-harness.spec.md) — the harness design (built; see `harness/`).

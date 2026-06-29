@@ -10,6 +10,7 @@ import { Console } from "./components/Console.tsx";
 import { createStore } from "./core/store.ts";
 import { presets } from "./core/presets.ts";
 import { createProvider } from "./core/oidc.ts";
+import { scenarioOf } from "./core/types.ts";
 import type { Mode } from "./core/types.ts";
 
 interface State {
@@ -64,6 +65,22 @@ const serveStatic = define.middleware(async (ctx) => {
     return ctx.next(); // not a static file — fall through to routes
   }
 });
+
+// Popup relay (GET /relay): the harness opens /authorize in a popup; the provider redirects the
+// popup here with ?code&state; this page forwards that query to the opener and closes. Keeps the
+// harness consumer from having to host any callback file.
+const RELAY_HTML = `<!doctype html><meta charset="utf-8"><title>rawhide relay</title>
+<body style="font:14px system-ui;background:#140E08;color:#B6A88E;margin:0;display:grid;place-items:center;height:100vh">
+<script>
+  (function () {
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage({ source: "rawhideidentity", query: location.search }, "*");
+      window.close();
+    } else {
+      document.body.textContent = "Open this page via the Rawhide harness popup.";
+    }
+  })();
+</script>`;
 
 const USAGE = `Rawhide Identity — local OIDC test provider
 
@@ -253,7 +270,21 @@ if (import.meta.main) {
     .get("/userinfo", (ctx) => {
       const { status, body } = provider.userinfo(ctx.req.headers.get("authorization"));
       return json(body, status);
-    });
+    })
+    // ---- harness support: machine-readable personas + popup relay ----
+    .get(
+      "/personas",
+      () =>
+        json(
+          store.listPersonas().map((p) => ({
+            id: p.id,
+            label: p.label,
+            description: p.description,
+            scenario: scenarioOf(p),
+          })),
+        ),
+    )
+    .get("/relay", () => new Response(RELAY_HTML, { headers: { "content-type": "text/html; charset=utf-8" } }));
 
   // ---- control console (localhost-only; omit when CONSOLE=off) ----
   if (consoleOn) {

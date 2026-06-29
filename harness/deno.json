@@ -1,0 +1,16 @@
+{
+  "name": "@gilvandovieira/rawhideharness",
+  "version": "0.1.0",
+  "license": "MIT",
+  "exports": "./rawhide-harness.ts",
+  "tasks": {
+    "check": "deno check rawhide-harness.ts",
+    "bundle": "deno bundle --platform browser rawhide-harness.ts -o dist/rawhide-harness.js",
+    "demo": "deno run -R -N --allow-env=PORT dev-serve.ts"
+  },
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "dom.asynciterable", "esnext"]
+  },
+  "fmt": { "exclude": ["dist/", "*.html"] },
+  "lint": { "exclude": ["dist/"] }
+}

@@ -5,6 +5,9 @@
 _fresh/
 vite.config.ts.timestamp-*
 
+# Harness browser bundle (regenerate with: deno task bundle)
+harness/dist/
+
 # Deno
 .deno/
 
