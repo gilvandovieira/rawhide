@@ -1,0 +1,6 @@
+# Rawhide Identity — https://gilvandovieira.github.io/rawhide
+# Public documentation site; everything is crawlable.
+User-agent: *
+Allow: /
+
+# Structured project summary for LLMs: /llms.txt  (https://llmstxt.org)

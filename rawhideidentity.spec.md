@@ -1,8 +1,8 @@
 # rawhideidentity
 
-**`@gilvandovieira/rawhideidentity`** — a drop-in OpenID Connect provider for **local dev and integration tests**, distributed on JSR. A relying party (RP) redirects the browser here; the human picks a **persona** (a test scenario); the provider mints tokens for that persona and bounces back. The headline goal: point `openid-client` at the issuer URL and it just works with no special-casing.
+**`@gilvandovieira/rawhideidentity`** — a drop-in OpenID Connect provider for **local dev and integration tests**, distributed as standalone binaries via GitHub Releases. A relying party (RP) redirects the browser here; the human picks a **persona** (a test scenario); the provider mints tokens for that persona and bounces back. The headline goal: point `openid-client` at the issuer URL and it just works with no special-casing.
 
-Stack: **Deno** + **Fresh 2.3** (`@fresh/core` on JSR). Token signing and JWKS use Web Crypto (`crypto.subtle`), no third-party deps required. The OIDC core is framework-agnostic; Fresh is only the adapter.
+Stack: **Deno** + **Fresh 2.3** (`@fresh/core`). Token signing and JWKS use Web Crypto (`crypto.subtle`), no third-party deps required. The OIDC core is framework-agnostic; Fresh is only the adapter.
 
 Two surfaces sit on top of that core: the **picker** RPs land on, and a separate **control console** (`/console`) for authoring personas on the fly and flipping behavior **knobs** at runtime. Personas are no longer a static array — a small seeded **store** holds ~10 presets plus anything you create, persisted to a local JSON file (or kept in-memory). Both surfaces are plain server-rendered forms with no islands, so the whole thing still runs with **no build step**.
 
@@ -405,7 +405,7 @@ export function Console({ personas, knobs }: { personas: Persona[]; knobs: Knobs
 
 ## Implementation — Deno + Fresh 2.3
 
-Fresh 2 ships as `@fresh/core` on JSR with a Hono-like `App` (`.use`/`.get`/`.post`, `ctx.render(jsx)`). Keep the OIDC logic in a framework-agnostic `core/` and let Fresh be a thin adapter, so the provider stays reusable and the dependency direction points one way (Fresh → core, never back).
+Fresh 2 ships as `@fresh/core` with a Hono-like `App` (`.use`/`.get`/`.post`, `ctx.render(jsx)`). Keep the OIDC logic in a framework-agnostic `core/` and let Fresh be a thin adapter, so the provider stays reusable and the dependency direction points one way (Fresh → core, never back).
 
 ### Layout
 
@@ -453,8 +453,9 @@ Both the picker and the console are plain server-rendered forms with no islands,
 The two exports split the runnable tool from the embeddable core. `.` is the provider entry — the `import.meta.main` guard means importing the package doesn't start a server, but running it does:
 
 ```
-deno run -A jsr:@gilvandovieira/rawhideidentity --tenant acme --port 9001
-deno install -g -A -n rawhideidentity jsr:@gilvandovieira/rawhideidentity   # then: rawhideidentity --port 9001
+deno run -A main.tsx --tenant acme --port 9001
+# or a prebuilt binary from GitHub Releases (no Deno needed):
+./rawhideidentity-<platform> --tenant acme --port 9001
 ```
 
 `./core` exposes the framework-agnostic primitives (`createStore`, the OIDC functions, the `Persona`/`Knobs` types) for anyone who wants to embed the issuer in their own process rather than run the binary.

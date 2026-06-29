@@ -10,7 +10,8 @@
     "dev": "deno run -A --watch main.tsx",
     "start": "deno run -A main.tsx",
     "check": "deno check main.tsx",
-    "test": "deno test -A"
+    "test": "deno test -A",
+    "llms": "deno run --allow-read --allow-write --allow-env=RAWHIDE_REPO,RAWHIDE_SITE scripts/gen-llms.ts"
   },
   "imports": {
     "fresh": "jsr:@fresh/core@^2.3.0",
@@ -25,7 +26,7 @@
   },
   "fmt": {
     "lineWidth": 120,
-    "exclude": ["*.md", "components/", "static/", ".oidc-personas*.json", "_fresh"]
+    "exclude": ["*.md", "components/", "static/", "docs/", ".github/", ".oidc-personas*.json", "_fresh"]
   },
   "exclude": ["_fresh", ".oidc-personas*.json", "harness"]
 }

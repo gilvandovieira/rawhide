@@ -1,0 +1,60 @@
+name: Deploy docs to GitHub Pages
+
+# Publishes the docs/ folder to GitHub Pages on every push to main.
+# Repo setting required once: Settings → Pages → Source = "GitHub Actions".
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "core/presets.ts" # llms.txt is regenerated from this
+      - "core/types.ts"
+      - "deno.json"
+      - "scripts/gen-llms.ts"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment; let an in-progress run finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      # Belt-and-suspenders: regenerate the llms.txt summary from source so the deployed
+      # copy is always current, regardless of whether the local pre-commit hook ran.
+      - name: Refresh docs/llms.txt
+        run: deno task llms
+        env:
+          RAWHIDE_REPO: ${{ github.server_url }}/${{ github.repository }}
+          RAWHIDE_SITE: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,36 @@
+# Rawhide Identity
+
+> A drop-in OpenID Connect provider for local dev and integration tests (Deno + Fresh 2.3): pick one of 22 scenario personas and get conformant RS256 / PKCE tokens, so your relying party runs its genuine token verification — no real IdP, no accounts, no secrets, no mocks. A companion <rawhide-harness> Web Component drives and inspects the flow from the client side.
+
+Rawhide is two packages — the provider `@gilvandovieira/rawhideidentity` (v0.1.0) and the relying-party harness `@gilvandovieira/rawhideharness` — distributed via GitHub Releases (standalone provider binaries for every platform + the harness browser bundle); or run from source with `deno task start`. The OIDC core is framework-agnostic; Fresh is a thin adapter. It is strictly a localhost/dev tool — it will impersonate anyone on request, so never expose it on a shared host.
+
+## Documentation
+- [Documentation site](https://gilvandovieira.github.io/rawhide/): overview, quick start, endpoints, and screenshots
+- [README](https://github.com/gilvandovieira/rawhide/blob/main/README.md): install, CLI flags, personas & knobs, multi-tenant, testing
+- [Provider spec](https://github.com/gilvandovieira/rawhide/blob/main/rawhideidentity.spec.md): OIDC provider design and HTTP surface
+- [Harness spec](https://github.com/gilvandovieira/rawhide/blob/main/rawhide-harness.spec.md): the <rawhide-harness> Web Component design
+
+## Downloads
+- [GitHub Releases](https://github.com/gilvandovieira/rawhide/releases): standalone provider binaries (per platform) + the harness browser bundle (`rawhide-harness.min.js`)
+- [Source repository](https://github.com/gilvandovieira/rawhide): run from a clone with `deno task start` (no build step)
+
+## HTTP endpoints
+- `GET /.well-known/openid-configuration`: discovery metadata
+- `GET /jwks`: public RS256 signing keys
+- `GET /authorize`: persona picker; issues an authorization code (append `&persona=<id>` to skip the picker)
+- `POST /token`: authorization_code (PKCE) and refresh_token grants
+- `GET /userinfo`: claims for a Bearer access token
+- `GET /personas`: machine-readable persona list (powers the harness)
+- `GET /relay`: postMessage relay for the harness popup flow
+- `GET /console`: control console to author personas and flip behaviour knobs (disable with CONSOLE=off)
+
+## Personas
+22 presets seed the store on first boot, grouped by what they exercise:
+- Happy path (6): valid, admin, valid-bea, admin-rae, org-owner, org-editor
+- Edge cases (10): expiring, long-lived, minimal, unverified-email, org-member, new-user, short-token, i18n, multi-role, no-email
+- Error / failure (6): expired, access-denied, login-required, consent-required, server-error, invalid-scope
+
+## Optional
+- [Fresh](https://usefresh.dev/): the Deno web framework the provider's UI is built on
+- [Deno](https://deno.com/): the runtime
+- [llms.txt spec](https://llmstxt.org/): the format of this file

@@ -1,0 +1,13 @@
+#!/bin/sh
+# Regenerate docs/llms.txt (https://llmstxt.org) from source before each commit, and stage it,
+# so the published summary always matches the committed code (persona list, version, …).
+# Enabled via: git config core.hooksPath .githooks
+set -e
+
+if ! command -v deno >/dev/null 2>&1; then
+  echo "pre-commit: deno not found — skipping docs/llms.txt regeneration" >&2
+  exit 0
+fi
+
+deno run --allow-read --allow-write --allow-env=RAWHIDE_REPO,RAWHIDE_SITE scripts/gen-llms.ts
+git add docs/llms.txt

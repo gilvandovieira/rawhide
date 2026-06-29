@@ -185,11 +185,11 @@ Provider-side relay page (the addition to rawhideidentity):
 
 Because it's a custom element with string attributes, it drops into anything:
 
-- **Plain HTML:** `<script type="module" src="https://esm.sh/jsr/@gilvandovieira/rawhideharness"></script>` then place the tag. Importing the module registers the element.
+- **Plain HTML:** `<script type="module" src="https://github.com/gilvandovieira/rawhide/releases/latest/download/rawhide-harness.min.js"></script>` then place the tag. Importing the module registers the element.
 - **React:** attributes are strings, so it works directly; for the events, attach via a `ref` + `addEventListener` (or natively in React 19+).
 - **Vue / Svelte / Angular:** native custom-element support; bind attributes and `@rawhide:tokens` / `on:` listeners as usual.
 
-Published on JSR as `@gilvandovieira/rawhideharness`; a single default import has the side effect of defining `rawhide-harness`.
+Distributed as a browser bundle (`rawhide-harness.min.js`) via GitHub Releases; a single default import has the side effect of defining `rawhide-harness`.
 
 ---
 

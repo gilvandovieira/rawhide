@@ -8,6 +8,10 @@ no pre-registration, no secrets, no real users.
 
 > Strictly a localhost/dev tool. It will happily impersonate an admin for anyone who asks.
 
+**Docs site:** <https://gilvandovieira.github.io/rawhide> · LLM summary at [`/llms.txt`](https://gilvandovieira.github.io/rawhide/llms.txt) (auto-generated each commit).
+
+> **Install:** standalone provider binaries and the harness bundle are published to [GitHub Releases](https://github.com/gilvandovieira/rawhide/releases) on each tag — or run from a clone with `deno task start` (no build step).
+
 ```bash
 deno task start                 # serve on http://localhost:9000
 deno task dev                   # same, with --watch reload
@@ -190,11 +194,12 @@ embedding the issuer in your own process.
 `@gilvandovieira/rawhideharness` is a drop-in Web Component that drives this provider through a
 real Authorization Code + PKCE flow, verifies the tokens (RS256 against JWKS + iss/aud/exp/nonce),
 and renders an inspector — so you can test your relying-party integration without writing client
-code. It lives in [`harness/`](./harness/) (its own JSR package, zero dependencies).
+code. It lives in [`harness/`](./harness/) (its own package, zero dependencies).
 
 ```html
 <rawhide-harness server="localhost:9000"></rawhide-harness>
-<script type="module" src="https://esm.sh/jsr/@gilvandovieira/rawhideharness"></script>
+<!-- bundle is published to GitHub Releases; or build locally: cd harness && deno task bundle -->
+<script type="module" src="https://github.com/gilvandovieira/rawhide/releases/latest/download/rawhide-harness.min.js"></script>
 ```
 
 It emits `rawhide:tokens` (`{ idToken, accessToken, refreshToken?, claims, userinfo?, valid }`)
